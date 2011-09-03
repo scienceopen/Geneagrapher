@@ -1,4 +1,4 @@
-import urllib
+import httplib2
 import re
 from htmlentitydefs import name2codepoint
 
@@ -25,10 +25,11 @@ class Grabber:
         Grab the page for self.id from the Math Genealogy Database.
         """
         if self.pagestr is None:
+            hlib = httplib2.Http(".cache")
             url = 'http://genealogy.math.ndsu.nodak.edu/id.php?id=' + str(self.id)
-            page = urllib.urlopen(url)
-            self.pagestr = page.read()
-            self.pagestr = self.pagestr.decode('utf-8')
+            resp, pagestr = hlib.request(url, headers={'cache-control':'max-age=3600'})
+            print resp
+            self.pagestr = pagestr.decode('utf-8')
             
     def extractNodeInformation(self):
         """
