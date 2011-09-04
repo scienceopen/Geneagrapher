@@ -27,8 +27,7 @@ class Grabber:
         if self.pagestr is None:
             hlib = httplib2.Http(".cache")
             url = 'http://genealogy.math.ndsu.nodak.edu/id.php?id=' + str(self.id)
-            resp, pagestr = hlib.request(url, headers={'cache-control':'max-age=3600'})
-            print resp
+            resp, pagestr = hlib.request(url)
             self.pagestr = pagestr.decode('utf-8')
             
     def extractNodeInformation(self):
