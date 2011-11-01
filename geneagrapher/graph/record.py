@@ -33,6 +33,18 @@ class Record:
         Compare a pair of mathematician records based on ids.
         """
         return self.id.__cmp__(r2.id)
+
+    def __unicode__(self):
+        if self.has_institution():
+            if self.has_year():
+                return u'{} \\n{} ({})'.format(self.name, self.institution, self.year)
+            else:
+                return u'{} \\n{}'.format(self.name, self.institution)
+        else:
+            if self.has_year():
+                return u'{} \\n({})'.format(self.name, self.year)
+            else:
+                return self.name
     
     def has_institution(self):
         """

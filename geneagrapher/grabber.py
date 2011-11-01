@@ -1,6 +1,6 @@
 import httplib2
 import re
-from htmlentitydefs import name2codepoint
+from BeautifulSoup import BeautifulSoup
 
 class Grabber:
     """
@@ -9,7 +9,6 @@ class Grabber:
     """
     def __init__(self, id):
         self.id = id
-        self.pagestr = None
         self.name = None
         self.institution = None
         self.year = None
@@ -17,19 +16,18 @@ class Grabber:
         self.descendants = []
 
     @staticmethod
-    def unescape(s):
-        return re.sub('&(%s);' % '|'.join(name2codepoint),\
-                      lambda m: unichr(name2codepoint[m.group(1)]), s)
+    def extract_id(tag):
+        """Extract the ID from a tag with form <a href="id.php?id=7401">."""
+        return int(tag.attrs[0][-1].split('=')[-1])
 
     def get_page(self):
         """
         Grab the page for self.id from the Math Genealogy Database.
         """
-        if self.pagestr is None:
-            hlib = httplib2.Http(".cache")
-            url = 'http://genealogy.math.ndsu.nodak.edu/id.php?id=' + str(self.id)
-            resp, pagestr = hlib.request(url)
-            self.pagestr = pagestr.decode('utf-8')
+        hlib = httplib2.Http(".cache")
+        url = 'http://genealogy.math.ndsu.nodak.edu/id.php?id=' + str(self.id)
+        resp, pagestr = hlib.request(url)
+        return pagestr.decode('utf-8')
             
     def extract_node_information(self):
         """
@@ -37,51 +35,38 @@ class Grabber:
         advisor ids, the mathematician name, the mathematician
         institution, and the year of the mathematician's degree.
         """
-        if self.pagestr is None:
-            self.get_page()
+        page = self.get_page()
+        soup = BeautifulSoup(page, convertEntities='html')
             
         self.advisors = []
         self.descendants = []
 
-        # Split the page string at newline characters.
-        psarray = self.pagestr.split('\n')
-        
-        if psarray[0].find("You have specified an ID that does not exist in the database. Please back up and try again.") > -1:
+        if soup.firstText().text == u"You have specified an ID that does not exist in the database. Please back up and try again.":
             # Then a bad URL (e.g., a bad record id) was given. Throw an exception.
             msg = "Invalid page address for id {}".format(self.id)
             raise ValueError(msg)
 
-        lines = iter(psarray)
-        for line in lines:
-            if line.find('h2 style=') > -1:
-                line = lines.next()
-                self.name = self.unescape(line.split('</h2>')[0].strip())
+        # Get mathematician name.
+        self.name = soup.find('h2').getText()
 
-            if '#006633; margin-left: 0.5em">' in line:
-                inst_year = line.split('#006633; margin-left: 0.5em">')[1].split("</span>")[:2]
-                self.institution = self.unescape(inst_year[0].strip())
-                if self.institution == u"":
-                    self.institution = None
-                if inst_year[1].split(',')[0].strip().isdigit():
-                    self.year = int(inst_year[1].split(',')[0].strip())
+        # Get institution name (or None, if it there is no institution name).
+        self.institution = soup.find('div', style="line-height: 30px; text-align: center; margin-bottom: 1ex").find('span').find('span').text
+        if self.institution == u'':
+            self.institution = None
 
-            if 'Advisor' in line:
-                advisorLine = line
-                while 'Advisor' in advisorLine:
-                    if 'a href=\"id.php?id=' in line:
-                        # Extract link to advisor page.
-                        advisor_id = int(advisorLine.split('a href=\"id.php?id=')[1].split('\">')[0])
-                        self.advisors.append(advisor_id)
-                        advisorLine = advisorLine.split(str(advisor_id))[1]
-                    else:
-                        # We are done. Adjust string to break the loop.
-                        # (Without this records with no advisor enter an infinite loop.)
-                        advisorLine = ""
+        # Get graduation year, if present.
+        inst_year = soup.find('div', style="line-height: 30px; text-align: center; margin-bottom: 1ex").find('span').contents[-1].strip()
+        if inst_year.isdigit():
+            self.year = int(inst_year)
 
-            if '<tr ' in line:
-                descendant_id = int(line.split('a href=\"id.php?id=')[1].split('\">')[0])
-                self.descendants.append(descendant_id)
-                
-            if 'According to our current on-line database' in line:
-                break
+        # Get advisor IDs.
+        self.advisors = [self.extract_id(info.findNext()) for info in
+                         soup.findAll(text=re.compile('Advisor'))
+                         if 'Advisor: Unknown' not in info]
+
+        # Get descendant IDs.
+        if soup.find('table') is not None:
+            self.descendants = [self.extract_id(info) for info in
+                                soup.find('table').findAll('a')]
+            
         return [self.name, self.institution, self.year, self.advisors, self.descendants]

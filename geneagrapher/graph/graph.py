@@ -98,22 +98,22 @@ class Graph:
         edges = ""
         dotfile = ""
         
-        dotfile += """digraph genealogy {
+        dotfile += u"""digraph genealogy {
     graph [charset="utf-8"];
     node [shape=plaintext];
     edge [style=bold];\n\n"""
 
+        printed_nodes = {}
         while len(queue) > 0:
             node_id = queue.pop()
             if not self.has_node(node_id):
                 # Skip this id if a corresponding node is not present.
                 continue
-            node = self.get_node(node_id)
-
-            if node.already_printed:
+            if printed_nodes.has_key(node_id):
+                # Skip this id because it is already printed.
                 continue
-            else:
-                node.already_printed = True
+            node = self.get_node(node_id)
+            printed_nodes[node_id] = node
             
             if include_ancestors:
                 # Add this node's advisors to queue.
@@ -124,7 +124,7 @@ class Graph:
                 queue += node.descendants
         
             # Print this node's information.
-            nodestr = "    {} [label=\"{}\"];".format(node_id, node)
+            nodestr = u"    {} [label=\"{}\"];".format(node_id, node)
             dotfile += nodestr
 
             # Store the connection information for this node.
