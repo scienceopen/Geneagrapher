@@ -1,4 +1,4 @@
-import urllib
+import six.moves.urllib as urllib
 import re
 from BeautifulSoup import BeautifulSoup
 
@@ -68,7 +68,7 @@ def get_institution(soup):
     """Return institution name (or None, if there is no institution name)."""
     institution = soup.find('div', style="line-height: 30px; \
 text-align: center; margin-bottom: 1ex").find('span').find('span').text
-    if institution == u'':
+    if not institution:
         institution = None
     return institution
 

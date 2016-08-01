@@ -2,9 +2,9 @@ from argparse import ArgumentParser
 from collections import deque
 import pkg_resources
 import sys
-from cache_grabber import CacheGrabber
-from graph import Graph
-from grabber import Grabber
+from .cache_grabber import CacheGrabber
+from .graph import Graph
+from .grabber import Grabber
 
 
 class Geneagrapher:
@@ -84,9 +84,9 @@ geneacache]',
                 record = grabber.get_record(id)
                 if self.verbose:
                     if 'message' in record:
-                        print record['message']
+                        print(record['message'])
                     else:
-                        print
+                        print()
                 self.graph.add_node(record['name'], record['institution'],
                                     record['year'], id, record['advisors'],
                                     record['descendants'], is_seed)
@@ -133,11 +133,10 @@ geneacache]',
                                                self.get_descendants)
         dotfile = dotfile.encode('utf-8', 'replace')
         if self.write_filename is not None:
-            outfile = open(self.write_filename, "w")
-            outfile.write(dotfile)
-            outfile.close()
+            with open(self.write_filename, "w") as f:
+                f.write(dotfile)
         else:
-            print dotfile,
+            print(dotfile)
 
 
 def ggrapher():
@@ -148,6 +147,6 @@ def ggrapher():
 
     try:
         ggrapher.build_graph()
-    except ValueError, e:
-        print e
+    except ValueError as e:
+        print(e)
     ggrapher.generate_dot_file()
